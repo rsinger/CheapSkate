@@ -84,8 +84,8 @@ helpers do
       parm['facet.query'] = [query]
     end
     opts = {}
-    opts[:offset] = params["start"] || 0
-    opts[:limit] = params["rows"] || 10  
+    opts[:offset] = (params["start"] || 0).to_i
+    opts[:limit] = (params["rows"] || 10).to_i
     results = Document.search(query, opts)
     if params["facet"] == "true"
       results.facets = Facet.search(parm)
