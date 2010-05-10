@@ -50,7 +50,7 @@ post '/update/' do
   i = InputDocument.new(request.env["rack.input"].read)
   i.parse
   wt = params["wt"] || "json"
-  results.query_time = qtime
+  i.query_time = qtime
   i.send("as_#{wt}")
 end
 
