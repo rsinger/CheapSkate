@@ -1,0 +1,15 @@
+:development:
+    :database:
+        :adapter: in_memory
+    :prefix_path: /dev
+    # Leave out :ferret: if you want an in-memory index.
+:production:
+    :database:
+        :adapter: mysql
+        :database: cheap_skate
+        :username: cheap_skate
+        :password: xxxxxx
+        :encoding: UTF-8
+    :ferret:
+        :path: db/skate
+    :prefix_path: /solr
