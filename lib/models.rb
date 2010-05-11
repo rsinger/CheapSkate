@@ -170,7 +170,7 @@ class Facet
     #response.query = (params["facet.query"]||params["q"]).first
     ids = []
     response.total = INDEX.search_each(response.query, :limit=>:all) do |id, score|
-      #break if score < 0.2
+      break if score < CONFIG[:facet_score_threshold]
       ids << INDEX[id][:id]
     end
     if params['facet.limit'] && !params['facet.limit'].empty?

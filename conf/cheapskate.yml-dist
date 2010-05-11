@@ -3,6 +3,7 @@
         :adapter: in_memory
     :prefix_path: /dev
     # Leave out :ferret: if you want an in-memory index.
+    :facet_score_threshold: 0.2
 :production:
     :database:
         :adapter: mysql
@@ -13,3 +14,14 @@
     :ferret:
         :path: db/skate
     :prefix_path: /solr
+    :facet_score_threshold: 0.2    
+schema:
+    :field_types:
+        "solr.StrField": String
+        "solr.TextField": String
+    :tokenizers:
+        "solr.WhitespaceTokenizerFactory": Ferret::Analysis::WhiteSpaceTokenizer
+        "solr.StandardTokenizerFactor": Ferret::Analysis::StandardTokenizer
+    :filters:
+        "solr.StopFilterFactory": Ferret::Analysis::StopFilter
+        "solr.WordDelimiterFilterFactory"
