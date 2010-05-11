@@ -74,6 +74,9 @@ class Document < Hash
     results.offset = opts[:offset]
     results.limit = opts[:limit]
     results.query = query
+    if results.limit < 0
+      result.limit = 10
+    end
     results.total = INDEX.search_each(query, opts) do |id, score|
       doc = INDEX[id]
       
@@ -189,19 +192,25 @@ class Facet
     end
     
     unless ids.empty? && response.query != "*:*"
-      conditions = nil
+      conditions = ""
       unless ids.empty?
-        conditions = "doc_id IN ('#{ids.join("', '")}') AND "
+        if ids.length > 1000
+          ids = ids[0,1000]
+        end
+        conditions << "doc_id IN ('#{ids.join("', '")}') AND "
       end
         
       params["facet.field"].each do | field |
+        next if field.split(/\s/).length > 1
         response.fields << field
-        response.facets[field] = []
-        facets = repository(:default).adapter.select("SELECT DISTINCT value, count(value) as facet_count FROM document_fields WHERE #{conditions} field = '#{field}' GROUP BY value ORDER BY facet_count LIMIT #{response.offset},#{response.limit}")
-        facets.each do | facet |        
-          response.facets[field] << [facet.value, facet.facet_count]
-        end
       end
+      conditions << "field IN ('#{response.fields.join("', '")}')"
+      response.facets[field] = []
+      facets = repository(:default).adapter.select("SELECT DISTINCT value, count(value) as facet_count FROM document_fields WHERE #{conditions} GROUP BY value ORDER BY facet_count LIMIT #{response.offset},#{response.limit}")
+      facets.each do | facet |        
+        response.facets[field] << [facet.value, facet.facet_count]
+      end
+
     end
     response
   end
