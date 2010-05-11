@@ -169,6 +169,7 @@ class Facet
     end
     #response.query = (params["facet.query"]||params["q"]).first
     ids = []
+    puts response.query
     response.total = INDEX.search_each(response.query, :limit=>:all) do |id, score|
       break if score < CONFIG[:facet_score_threshold]
       ids << INDEX[id][:id]
