@@ -208,7 +208,7 @@ class Facet
       
 
     facet_fields.each do | facet, values |
-      response.facets[facet] = values.sort{|a,b| b[1]<=>a[1]}
+      response.facets[facet] = values.sort{|a,b| b[1]<=>a[1]}[response.offset, response.limit]
     end
 
     response
