@@ -190,7 +190,7 @@ class Facet
     
     unless ids.empty? && response.query != "*:*"
       conditions = nil
-      unless ids.empty
+      unless ids.empty?
         conditions = "doc_id IN ('#{ids.join("', '")}') AND "
       end
         
