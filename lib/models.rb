@@ -205,10 +205,11 @@ class Facet
         response.fields << field
       end
       conditions << "field IN ('#{response.fields.join("', '")}')"
-      response.facets[field] = []
-      facets = repository(:default).adapter.select("SELECT DISTINCT value, count(value) as facet_count FROM document_fields WHERE #{conditions} GROUP BY value ORDER BY facet_count LIMIT #{response.offset},#{response.limit}")
+      
+      facets = repository(:default).adapter.select("SELECT DISTINCT value, count(value) as facet_count, field FROM document_fields WHERE #{conditions} GROUP BY field, value ORDER BY facet_count LIMIT #{response.offset},#{response.limit}")
       facets.each do | facet |        
-        response.facets[field] << [facet.value, facet.facet_count]
+        response.facets[facet.field] ||= []
+        response.facets[facet.field] << [facet.value, facet.facet_count]
       end
 
     end
