@@ -174,12 +174,7 @@ class Facet
     ids = []
     
     # No point in grabbing everything here.
-    unless response.query == "*:*"
-      response.total = INDEX.search_each(response.query, :limit=>:all) do |id, score|
-        break if score < CONFIG[:facet_score_threshold]
-        ids << INDEX[id][:id]
-      end
-    end
+
     if params['facet.limit'] && !params['facet.limit'].empty?
       response.limit = params['facet.limit'].first
     else
@@ -191,28 +186,31 @@ class Facet
       response.offset = 0
     end
     
-    unless ids.empty? && response.query != "*:*"
-      conditions = ""
-      unless ids.empty?
-        if ids.length > 1000
-          ids = ids[0,1000]
-        end
-        conditions << "doc_id IN ('#{ids.join("', '")}') AND "
-      end
-        
-      params["facet.field"].each do | field |
-        next if field.split(/\s/).length > 1
-        response.fields << field
-      end
-      conditions << "field IN ('#{response.fields.join("', '")}')"
-      
-      facets = repository(:default).adapter.select("SELECT DISTINCT value, count(value) as facet_count, field FROM document_fields WHERE #{conditions} GROUP BY field, value ORDER BY facet_count LIMIT #{response.offset},#{response.limit}")
-      facets.each do | facet |        
-        response.facets[facet.field] ||= []
-        response.facets[facet.field] << [facet.value, facet.facet_count]
-      end
 
+    facet_fields = {}
+    params["facet.field"].each do | field |
+      facet_fields[field.to_sym] = {}
+
+      response.fields << field
     end
+    facet_filter = lambda do |doc,score,searcher|
+      facet_fields.keys.each do |field|
+        [*searcher[doc][field]].each do |term|  
+          next if term.nil?
+          facet_fields[field][term] ||=0
+          facet_fields[field][term] += 1
+        end
+      end
+    end
+
+    response.total = INDEX.search_each(response.query, :limit=>:all, :filter_proc=>facet_filter) do |id, score|
+    end
+      
+
+    facet_fields.each do | facet, values |
+      response.facets[facet] = values.sort{|a,b| b[1]<=>a[1]}.flatten
+    end
+
     response
   end
 end
