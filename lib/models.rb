@@ -169,10 +169,13 @@ class Facet
     end
     #response.query = (params["facet.query"]||params["q"]).first
     ids = []
-    puts response.query
-    response.total = INDEX.search_each(response.query, :limit=>:all) do |id, score|
-      break if score < CONFIG[:facet_score_threshold]
-      ids << INDEX[id][:id]
+    
+    # No point in grabbing everything here.
+    unless response.query == "*:*"
+      response.total = INDEX.search_each(response.query, :limit=>:all) do |id, score|
+        break if score < CONFIG[:facet_score_threshold]
+        ids << INDEX[id][:id]
+      end
     end
     if params['facet.limit'] && !params['facet.limit'].empty?
       response.limit = params['facet.limit'].first
@@ -185,13 +188,19 @@ class Facet
       response.offset = 0
     end
     
-    
-    params["facet.field"].each do | field |
-      response.fields << field
-      response.facets[field] = []
-      facets = repository(:default).adapter.select("SELECT DISTINCT value, count(value) as facet_count FROM document_fields WHERE doc_id IN ('#{ids.join("', '")}') AND field = '#{field}' GROUP BY value ORDER BY facet_count LIMIT #{response.offset},#{response.limit}")
-      facets.each do | facet |        
-        response.facets[field] << [facet.value, facet.facet_count]
+    unless ids.empty && response.query != "*:*"
+      conditions = nil
+      unless ids.empty
+        conditions = "doc_id IN ('#{ids.join("', '")}') AND "
+      end
+        
+      params["facet.field"].each do | field |
+        response.fields << field
+        response.facets[field] = []
+        facets = repository(:default).adapter.select("SELECT DISTINCT value, count(value) as facet_count FROM document_fields WHERE #{conditions} field = '#{field}' GROUP BY value ORDER BY facet_count LIMIT #{response.offset},#{response.limit}")
+        facets.each do | facet |        
+          response.facets[field] << [facet.value, facet.facet_count]
+        end
       end
     end
     response
