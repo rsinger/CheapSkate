@@ -176,12 +176,12 @@ class Facet
     # No point in grabbing everything here.
 
     if params['facet.limit'] && !params['facet.limit'].empty?
-      response.limit = params['facet.limit'].first
+      response.limit = params['facet.limit'].first.to_i
     else
       response.limit = 10
     end
     if params['facet.offset'] && !params['facet.offset'].empty?
-      response.offset = params['facet.offset']
+      response.offset = params['facet.offset'].first.to_i
     else
       response.offset = 0
     end
@@ -194,6 +194,8 @@ class Facet
       response.fields << field
     end
     facet_filter = lambda do |doc,score,searcher|
+      # You must be this high to be a good facet
+      return if score < CONFIG[:facet_score_threshold]
       facet_fields.keys.each do |field|
         [*searcher[doc][field]].each do |term|  
           next if term.nil?
