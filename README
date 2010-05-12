@@ -17,8 +17,6 @@ Faceting causes a serious performance hit on large result sets due to the fact t
 
 Todos:
 
-An analog to schema.xml (ideally in YAML) to assist datafield typing and be more selective with regards to storing data in the RDBMS.
-
 Provide field boosting and analyzers both during index as well as query.
 
 Add the MoreLikeThis analyzer from acts_as_ferret.
