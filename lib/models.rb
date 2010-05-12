@@ -1,57 +1,35 @@
-class Document < Hash
-
-  attr_accessor :document_id
+class Document < Ferret::Document
   
-  def initialize(doc_id=UUID.generate)
-    @document_id = doc_id
+  def initialize(doc_id=UUID.generate, boost=1.0)
+    self[CONFIG[:schema].id_field] = doc_id
+    super(boost)
   end
-  
-  def save
-    get_document_id
-    self.delete_fields
-    INDEX << self.to_document
-    DocumentField.add_fields(self)
-  end
-  
-  def get_document_id
-    unless self.document_id
-      self.document_id = UUID.generate
-    end
-    self.document_id
-  end
-  
-  def to_document(stringify_keys=false)
-    id_field = :id
-    id_field = "id" if stringify_keys
-    document = {id_field=>@document_id}
-    self.each_pair do |key, val|
-      next unless key
-      if stringify_keys
-        document[key.to_s] = val
-      else
-        document[key.to_sym] = val
-      end
-    end
-    document
-  end
+    
+  #def to_document(stringify_keys=false)
+  #  id_field = :id
+  #  id_field = "id" if stringify_keys
+  #  document = {id_field=>@document_id}
+  #  self.each_pair do |key, val|
+  #    next unless key
+  #    if stringify_keys
+  #      document[key.to_s] = val
+  #    else
+  #      document[key.to_sym] = val
+  #    end
+  #  end
+  #  document
+  #end
   
   def delete(clear=true)
     INDEX.delete(self.document_id)
-    delete_fields
     self.clear if clear
   end
   
-  def delete_fields
-    flds = DocumentField.all(:doc_id=>self.document_id)
-    flds.destroy! unless flds.empty?
-  end
   
   def self.delete(ids)
     [*ids].each do |id|
       INDEX.delete(id)     
     end
-    flds = DocumentField.all(:doc_id=>ids)
-    flds.destroy!
   end
     
   def add_field(key, value)
@@ -60,11 +38,12 @@ class Document < Hash
         add_field(key, v)
       end
     else      
-      if self[key.to_sym]
-        self[key.to_sym] = [*self[key.to_sym]]
-        self[key.to_sym] << value
-      else
-        self[key.to_sym] = value
+      self[key.to_sym] ||= []
+      self[key.to_sym] << value
+    end
+    if copy_fields = CONFIG[:schema].copy_fields[key.to_sym]
+      copy_fields.each do |field|
+        add_field(field, value)
       end
     end
   end
@@ -78,13 +57,7 @@ class Document < Hash
       result.limit = 10
     end
     results.total = INDEX.search_each(query, opts) do |id, score|
-      doc = INDEX[id]
-      
-      field_types = {}
-      DocumentField.all(:doc_id=>INDEX[id]).each do |fld|
-        field_types[fld.field.to_sym] = fld.datatype
-      end
-      results << typed_document(doc, field_types)
+      results << CONFIG[:schema].typed_document(INDEX[id])
     end
     results
   end
@@ -128,16 +101,6 @@ class ResultSet
     @docs << obj
   end
   
-  def self.search(query, opts={})
-    results = self.new
-    results.total = INDEX.search_each(query, opts) do |id, score|
-      results << Document.first(:doc_id=>INDEX[id])
-    end
-    results.query = query
-    results.offset = opts[:offset]||0
-    results.limit = opts[:limit]||10
-    results    
-  end
   def to_hash()
     response = {"responseHeader"=>{"status"=>0, "QTime"=>self.query_time, "params"=>{"q"=>self.query, "version"=>"2.2", "rows"=>self.limit}}}
     response["response"] = {"numFound"=>self.total, "start"=>self.offset, "docs"=>[]}
@@ -240,6 +203,8 @@ class InputDocument
   attr_reader :doc
   attr_accessor :query_time
   def initialize(doc)
+    doc.sub!(/^[^\<]*/,'')
+    puts doc
     @doc = Hpricot::XML(doc)
   end
   
@@ -257,13 +222,13 @@ class InputDocument
         value = elem.inner_html
         if field and value
           if field == "id"
-            document.document_id = value
+            document[CONFIG[:schema].id_field] = value
           else
             document.add_field(field, value)
           end
         end
       end      
-      document.save
+      INDEX << document
     end
   end
   
@@ -301,35 +266,12 @@ class InputDocument
   def as_json
     return to_hash.to_json    
   end
+  
+  def as_javabin
+    as_json
+  end
 end
 
-class DocumentField
-  include DataMapper::Resource
-  property :id, Serial
-  property :doc_id, String, :index=>true
-  property :field, String, :index=>true
-  property :value, String, :index=>true, :length=>255 
-  property :datatype, String
-  
-  def self.add_fields(doc)
-    collection = self.all(:doc_id => doc.document_id)
-    doc.each_pair do |key, val|
-      [*val].each do |v|
-        begin
-          collection.new(:doc_id=>doc.document_id, :field=>key.to_s, :value=>v.each_char[0,255].join, :datatype=>v.class.name)
-        rescue
-          puts "Error adding :field=>#{key}, :value=>#{v.to_s[0,255]} for document: #{doc.document_id}"
-        end
-      end      
-    end
-    collection.save!
-  end
-  
-  def self.add_field(doc_id, field, value)
-    fld = self.new(:doc_id=>doc_id, :field=>field.to_s, :value=>value.each_char[0,255].join, :datatype=>value.class.name)
-    fld.save
-  end
-end
 
 class CSVLoader
   

@@ -1,11 +1,10 @@
-CheapSkate is a Solr emulator intended for situations where the basic functionality of Solr is needed or desired but a Java application server is not feasible (i.e. a cheap, shared webhosting account).  It uses Ferret (a Ruby Lucene clone) for the fulltext indexing and any Datamapper-compatible database to store the fields for faceting.
+CheapSkate is a Solr emulator intended for situations where the basic functionality of Solr is needed or desired but a Java application server is not feasible (i.e. a cheap, shared webhosting account).  It uses Ferret (a Ruby Lucene clone) for the fulltext indexing and faceting.
 
 CheapSkate is very much a work in progress and development is based on responding to specific needs, rather than really trying to build an actual Solr clone (hence the current lack of XML responseWriter, for example).
 
 Requirements:
     sinatra
     ferret
-    datamapper
     hpricot
     uuid
     json
@@ -14,7 +13,7 @@ Caveats:
 
 CheapSkate isn't really intended to replace Solr.  If you need something that scales to millions of documents or performs replication or does all the neat things Solr does, use Solr.
 
-Update performance of CheapSkate is a little wanting (the RDBMS component is the main bottleneck) mainly due to the fact that all fields are (currently) stored in the RDBMS.  It is recommended to only add no more than 100 documents at a time to prevent timeout errors.
+Faceting causes a serious performance hit on large result sets due to the fact that the facet results require every document in the index to be loaded.
 
 Todos:
 

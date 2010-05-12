@@ -1,5 +1,4 @@
 require "rubygems"
-require "dm-core" 
 require "uuid"
 require 'ferret'
 require 'json'
@@ -10,6 +9,7 @@ require 'cgi'
 require 'sinatra'
 require 'yaml'
 require 'lib/models'
+require 'lib/schema'
 
 configure :development do
   CONFIG = YAML.load_file('conf/cheapskate.yml')[:development]
@@ -21,9 +21,23 @@ end
 
 configure do
   INDEX = Ferret::Index::Index.new(CONFIG[:ferret]||{})
-  
-  DataMapper.setup(:default, CONFIG[:database])
-  DocumentField.auto_upgrade! if DocumentField.respond_to?(:"auto_upgrade!")
+  yaml = YAML.load_file('conf/schema.yml')
+  CONFIG[:schema] = Schema.new
+  CONFIG[:schema].load_from_conf(yaml)
+  infos = INDEX.field_infos
+  index_schema_changed = false
+  CONFIG[:schema].field_names.each do |fld|
+    f = CONFIG[:schema].field_to_field_info(fld)
+    if !infos[f.name]
+      infos << f
+      index_schema_changed = true
+    end
+  end
+  if index_schema_changed && INDEX.reader.num_docs > 0
+    raise "Schema has changed, but Index has data!"
+  else
+    infos.create_index(CONFIG[:ferret][:path])
+  end
 end
   
 
@@ -74,12 +88,18 @@ helpers do
   def select(params)
     qry=request.env["rack.input"].read
     parm = CGI.parse(qry)
-    query = params[:q]
+    query_parser = Ferret::QueryParser.new
+    query_parser.fields = INDEX.reader.field_names.to_a
+    query = query_parser.parse(params[:q])
+    puts query.boost
     if parm['fq'] && !parm['fq'].empty?
       parm['fq'].each do |fq|
-        query << " +#{fq}"
+        f = Ferret::Search::QueryFilter.new(query_parser.parse(fq))
+        puts f.inspect
+        query = Ferret::Search::FilteredQuery.new(query, f)
       end
     end
+    puts query.inspect
     if !parm['facet.query'] or parm['facet.query'].empty?
       parm['facet.query'] = [query]
     end
