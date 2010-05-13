@@ -117,19 +117,21 @@ class Schema
       end  
       @fields[field.to_sym][:multi_valued] = fld['multiValued']||false
     end
-    conf['schema']['dynamic_fields'].keys.each do |field|
-      @dynamic_fields ||= {}
-      @dynamic_fields[field.to_sym] = {}
-      fld = conf['schema']['dynamic_fields'][field]
-      @dynamic_fields[field.to_sym][:field_type] = fld['type'].to_sym
-      if fld['indexed'] == false
-        @dynamic_fields[field.to_sym][:index] = :no
-      end
-      if fld['stored'] == false
-        @dynamic_fields[field.to_sym][:store] = :no
+    if conf['schema']['dynamic_fields']
+      conf['schema']['dynamic_fields'].keys.each do |field|
+        @dynamic_fields ||= {}
+        @dynamic_fields[field.to_sym] = {}
+        fld = conf['schema']['dynamic_fields'][field]
+        @dynamic_fields[field.to_sym][:field_type] = fld['type'].to_sym
+        if fld['indexed'] == false
+          @dynamic_fields[field.to_sym][:index] = :no
+        end
+        if fld['stored'] == false
+          @dynamic_fields[field.to_sym][:store] = :no
+        end  
+        @dynamic_fields[field.to_sym][:multi_valued] = fld['multiValued']||false
       end  
-      @dynamic_fields[field.to_sym][:multi_valued] = fld['multiValued']||false
-    end    
+    end  
     conf['schema']['types'].keys.each do |type|
       @field_types[type.to_sym] = conf['schema']['types'][type]
     end
