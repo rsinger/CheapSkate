@@ -1,0 +1,290 @@
+schema: 
+  name: example
+  copyFields: 
+  - cat: text
+  - name: text
+  - manu: text
+  - features: text
+  - includes: text
+  - manu: manu_exact
+  uniqueKey: id
+  fields: 
+    price: 
+      stored: true
+      indexed: true
+      type: float
+    cat: 
+      multiValued: true
+      stored: true
+      indexed: true
+      type: text_ws
+      omitNorms: true
+    name: 
+      stored: true
+      indexed: true
+      type: textgen
+    category: 
+      stored: true
+      indexed: true
+      type: textgen
+    popularity: 
+      stored: true
+      indexed: true
+      type: int
+    content_type: 
+      multiValued: true
+      stored: true
+      indexed: true
+      type: string
+    author: 
+      stored: true
+      indexed: true
+      type: textgen
+    comments: 
+      stored: true
+      indexed: true
+      type: text
+    title: 
+      multiValued: true
+      stored: true
+      indexed: true
+      type: text
+    includes: 
+      termOffsets: true
+      stored: true
+      termVectors: true
+      indexed: true
+      type: text
+      termPositions: true
+    text: 
+      multiValued: true
+      stored: false
+      indexed: true
+      type: text
+    weight: 
+      stored: true
+      indexed: true
+      type: float
+    subject: 
+      stored: true
+      indexed: true
+      type: text
+    id: 
+      required: true
+      stored: true
+      indexed: true
+      type: string
+    text_rev: 
+      multiValued: true
+      stored: false
+      indexed: true
+      type: text_rev
+    manu_exact: 
+      stored: false
+      indexed: true
+      type: string
+    links: 
+      multiValued: true
+      stored: true
+      indexed: true
+      type: string
+    features: 
+      multiValued: true
+      stored: true
+      indexed: true
+      type: text
+    sku: 
+      stored: true
+      indexed: true
+      type: textTight
+      omitNorms: true
+    description: 
+      stored: true
+      indexed: true
+      type: text
+    inStock: 
+      stored: true
+      indexed: true
+      type: boolean
+    payloads: 
+      stored: true
+      indexed: true
+      type: payloads
+    last_modified: 
+      stored: true
+      indexed: true
+      type: date
+    manu: 
+      stored: true
+      indexed: true
+      type: textgen
+      omitNorms: true
+    alphaNameSort: 
+      stored: false
+      indexed: true
+      type: alphaOnlySort
+    keywords: 
+      stored: true
+      indexed: true
+      type: textgen
+  version: "1.2"
+  dynamic_fields: 
+    "*_tf": 
+      stored: true
+      indexed: true
+      type: tfloat
+    "*_l": 
+      stored: true
+      indexed: true
+      type: long
+    "*_b": 
+      stored: true
+      indexed: true
+      type: boolean
+    random_*: 
+      type: random
+    "*_ti": 
+      stored: true
+      indexed: true
+      type: tint
+    "*_d": 
+      stored: true
+      indexed: true
+      type: double
+    "*_tdt": 
+      stored: true
+      indexed: true
+      type: tdate
+    "*_tl": 
+      stored: true
+      indexed: true
+      type: tlong
+    "*_f": 
+      stored: true
+      indexed: true
+      type: float
+    "*_pi": 
+      stored: true
+      indexed: true
+      type: pint
+    attr_*: 
+      multiValued: true
+      stored: true
+      indexed: true
+      type: textgen
+    "*_s": 
+      stored: true
+      indexed: true
+      type: string
+    ignored_*: 
+      multiValued: true
+      type: ignored
+    "*_td": 
+      stored: true
+      indexed: true
+      type: tdouble
+    "*_dt": 
+      stored: true
+      indexed: true
+      type: date
+    "*_t": 
+      stored: true
+      indexed: true
+      type: text
+    "*_i": 
+      stored: true
+      indexed: true
+      type: int
+  types: 
+    pint: 
+      :type: :int
+      :index: :untokenized_omit_norms
+    tfloat: 
+      :type: 
+      :index: :untokenized_omit_norms
+    boolean: 
+      :type: :bool
+      :index: :untokenized_omit_norms
+    phonetic: 
+      :type: :text
+    sfloat: 
+      :type: 
+      :index: :untokenized_omit_norms
+    tdate: 
+      :type: 
+      :index: :untokenized_omit_norms
+    binary: 
+      :type: 
+      :index: :untokenized
+    pdouble: 
+      :type: 
+      :index: :untokenized_omit_norms
+    pfloat: 
+      :type: :float
+      :index: :untokenized_omit_norms
+    plong: 
+      :type: 
+      :index: :untokenized_omit_norms
+    lowercase: 
+      :type: :text
+    text: 
+      :type: :text
+    int: 
+      :type: 
+      :index: :untokenized_omit_norms
+    date: 
+      :type: 
+      :index: :untokenized_omit_norms
+    text_rev: 
+      :type: :text
+    slong: 
+      :type: 
+      :index: :untokenized_omit_norms
+    sint: 
+      :type: 
+      :index: :untokenized_omit_norms
+    textgen: 
+      :type: :text
+    text_ws: 
+      :type: :text
+    random: 
+      :type: 
+      :index: :untokenized
+    tdouble: 
+      :type: 
+      :index: :untokenized_omit_norms
+    tlong: 
+      :type: 
+      :index: :untokenized_omit_norms
+    tint: 
+      :type: 
+      :index: :untokenized_omit_norms
+    alphaOnlySort: 
+      :type: :text
+      :index: :omit_norms
+    sdouble: 
+      :type: 
+      :index: :untokenized_omit_norms
+    pdate: 
+      :type: :date
+      :index: :untokenized_omit_norms
+    double: 
+      :type: 
+      :index: :untokenized_omit_norms
+    string: 
+      :type: :string
+      :index: :untokenized_omit_norms
+    ignored: 
+      :type: :string
+      :index: :untokenized
+    payloads: 
+      :type: :text
+    textTight: 
+      :type: :text
+    long: 
+      :type: 
+      :index: :untokenized_omit_norms
+    float: 
+      :type: 
+      :index: :untokenized_omit_norms
+  defaultSearchField: text

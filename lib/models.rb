@@ -1,7 +1,7 @@
 class Document < Ferret::Document
   
   def initialize(doc_id=UUID.generate, boost=1.0)
-    self[CONFIG[:schema].id_field] = doc_id
+    self[CheapSkate.schema.id_field] = doc_id
     super(boost)
   end
     
@@ -21,18 +21,19 @@ class Document < Ferret::Document
   #end
   
   def delete(clear=true)
-    INDEX.delete(self.document_id)
+    CheapSkate.index.delete(self.document_id)
     self.clear if clear
   end
   
   
   def self.delete(ids)
     [*ids].each do |id|
-      INDEX.delete(id)     
+      CheapSkate.index.delete(id)     
     end
   end
     
   def add_field(key, value)
+    CheapSkate.schema.set_dynamic_field(key.to_sym) unless CheapSkate.schema.field_names.index(key.to_sym)
     if value.is_a?(Array)
       value.each do |v|
         add_field(key, v)
@@ -41,7 +42,7 @@ class Document < Ferret::Document
       self[key.to_sym] ||= []
       self[key.to_sym] << value
     end
-    if copy_fields = CONFIG[:schema].copy_fields[key.to_sym]
+    if copy_fields = CheapSkate.schema.copy_fields[key.to_sym]
       copy_fields.each do |field|
         add_field(field, value)
       end
@@ -53,11 +54,12 @@ class Document < Ferret::Document
     results.offset = opts[:offset]
     results.limit = opts[:limit]
     results.query = query
-    if results.limit < 0
-      result.limit = 10
+    if opts[:limit] < 1
+      opts[:limit] = 1
     end
-    results.total = INDEX.search_each(query, opts) do |id, score|
-      results << CONFIG[:schema].typed_document(INDEX[id])
+
+    results.total = CheapSkate.index.search_each(query, opts) do |id, score|
+      results << CheapSkate.schema.typed_document(CheapSkate.index[id])
     end
     results
   end
@@ -106,7 +108,7 @@ class ResultSet
     response["response"] = {"numFound"=>self.total, "start"=>self.offset, "docs"=>[]}
     if self.docs
       self.docs.each do |doc|
-        response["response"]["docs"] << doc.to_document(true)
+        response["response"]["docs"] << doc
       end
     end
     @facets.add_facets(response) if @facets
@@ -153,9 +155,9 @@ class Facet
     facet_fields = {}
     params["facet.field"].each do | field |
       facet_fields[field.to_sym] = {}
-
       response.fields << field
     end
+    
     facet_filter = lambda do |doc,score,searcher|
       # You must be this high to be a good facet
       return if score < CONFIG[:facet_score_threshold]
@@ -168,9 +170,9 @@ class Facet
       end
     end
 
-    response.total = INDEX.search_each(response.query, :limit=>:all, :filter_proc=>facet_filter) do |id, score|
+    response.total = CheapSkate.index.search_each(response.query, :limit=>:all, :filter_proc=>facet_filter) do |id, score|
     end
-      
+
 
     facet_fields.each do | facet, values |
       response.facets[facet] = values.sort{|a,b| b[1]<=>a[1]}[response.offset, response.limit]
@@ -222,18 +224,18 @@ class InputDocument
         value = elem.inner_html
         if field and value
           if field == "id"
-            document[CONFIG[:schema].id_field] = value
+            document[CheapSkate.schema.id_field] = value
           else
             document.add_field(field, value)
           end
         end
       end      
-      INDEX << document
+      CheapSkate.index << document
     end
   end
   
   def commit
-    INDEX.flush
+    CheapSkate.index.flush
   end
   
   def delete
@@ -242,7 +244,7 @@ class InputDocument
       ids << del.inner_html
     end
     (@doc/"/delete/query").each do |del|
-      INDEX.search_each(del.attributes['q'], :limit=>:all) do |id,score|
+      CheapSkate.index.search_each(del.attributes['q'], :limit=>:all) do |id,score|
         ids << id
       end      
     end
@@ -252,7 +254,7 @@ class InputDocument
   end
   
   def optimize
-    INDEX.optimize
+    CheapSkate.index.optimize
   end
   
   def to_hash
@@ -266,13 +268,57 @@ class InputDocument
   def as_json
     return to_hash.to_json    
   end
-  
-  def as_javabin
-    as_json
-  end
 end
 
 
 class CSVLoader
+  attr_reader :fields, :filename, :file, :field_meta
+  def initialize(params)
+    @filename = params['stream.file']
+    if @filename
+      @file = open(@filename)
+    end
+    @field_meta = {}
+    params.each_pair do |key, val|
+      next unless key =~ /^f\./
+      (f,field,arg) = key.split(".")
+      @field_meta[field] ||={}
+      @field_meta[field][arg] = val
+    end
+  end
   
+  def parse
+    if @file
+      parse_file
+    end
+  end
+  
+  def parse_file
+    @fields = @file.gets.chomp.split(",")
+    while line = @file.gets
+      line.chomp!
+      doc = Document.new
+      # keep track of where we are on the row
+      i = 0
+      FasterCSV.parse_line(line).each do |field|
+        unless field && @fields[i]
+          i+= 1
+          next
+        end
+        if @fields[i] == "id"
+          doc[:id] = field
+        else
+          if @field_meta[@fields[i]] && @field_meta[@fields[i]]["split"] == "true"
+            field.split(@field_meta[@fields[i]]["separator"]).each do |f|
+              doc.add_field(@fields[i], f.strip)
+            end
+          else
+            doc.add_field(@fields[i], field.strip)
+          end
+        end        
+        i+=1
+      end  
+      CheapSkate.index << doc    
+    end
+  end
 end

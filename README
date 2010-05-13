@@ -8,6 +8,7 @@ Requirements:
     hpricot
     uuid
     json
+    faster_csv
     
 Caveats:
 

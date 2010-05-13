@@ -10,34 +10,36 @@ require 'sinatra'
 require 'yaml'
 require 'lib/models'
 require 'lib/schema'
-
-configure :development do
-  CONFIG = YAML.load_file('conf/cheapskate.yml')[:development]
-end
-
-configure :production do
-  CONFIG = YAML.load_file('conf/cheapskate.yml')[:production]
-end
+require 'faster_csv'
 
 configure do
-  INDEX = Ferret::Index::Index.new(CONFIG[:ferret]||{})
-  yaml = YAML.load_file('conf/schema.yml')
-  CONFIG[:schema] = Schema.new
-  CONFIG[:schema].load_from_conf(yaml)
-  infos = INDEX.field_infos
+  env = Sinatra::Application.environment().to_sym
+  CONFIG = YAML.load_file('conf/cheapskate.yml')[env]
+  Index = Struct.new(:index, :schema)
+  
+  i = Ferret::Index::Index.new(CONFIG[:ferret]||{})
+  yaml = YAML.load_file(CONFIG[:schema])
+  s = Schema.new
+  s.load_from_conf(yaml)
+  infos = i.field_infos
   index_schema_changed = false
-  CONFIG[:schema].field_names.each do |fld|
-    f = CONFIG[:schema].field_to_field_info(fld)
+  s.field_names.each do |fld|
+    f = s.field_to_field_info(fld)
     if !infos[f.name]
       infos << f
       index_schema_changed = true
     end
   end
-  if index_schema_changed && INDEX.reader.num_docs > 0
+  if index_schema_changed && i.reader.num_docs > 0
     raise "Schema has changed, but Index has data!"
-  else
+  elsif index_schema_changed
+    puts "Creating schema at #{CONFIG[:ferret][:path]}"
     infos.create_index(CONFIG[:ferret][:path])
   end
+  CheapSkate = Index.new(i,s)
+  puts "CheapSkate starting with index shema: #{yaml["schema"]["name"]}"
+  puts "#{CheapSkate.index.reader.num_docs} documents currently indexed."
+  puts CONFIG.inspect
 end
   
 
@@ -46,6 +48,9 @@ get '/select/' do
   results = select(params)
   wt = params["wt"] || "json"
   results.query_time = qtime
+  if wt == "json"
+    content_type 'application/json', :charset => 'utf-8'
+  end
   results.send("as_#{wt}")
 end
 
@@ -57,7 +62,14 @@ post '/select/' do
 end
 
 get '/update/csv/' do
-  puts params.inspect
+  csv = CSVLoader.new(params)
+  csv.parse
+out = <<END
+  <?xml version="1.0" encoding="UTF-8"?>
+  <response>
+  <lst name="responseHeader"><int name="status">0</int><int name="QTime">#{qtime}</int></lst>
+  </response>
+END
 end
 
 post '/update/' do
@@ -86,27 +98,39 @@ end
 
 helpers do
   def select(params)
-    qry=request.env["rack.input"].read
+    qry = request.env["rack.input"].read
+    if qry.empty?
+      qry = request.env["rack.request.query_string"]
+    end
+
     parm = CGI.parse(qry)
     query_parser = Ferret::QueryParser.new
-    query_parser.fields = INDEX.reader.field_names.to_a
-    query = query_parser.parse(params[:q])
-    puts query.boost
+    query_parser.fields = CheapSkate.index.reader.field_names.to_a
+    #query = query_parser.parse(params[:q])
+    query = (params[:q]||"*:*")
+    
     if parm['fq'] && !parm['fq'].empty?
       parm['fq'].each do |fq|
-        f = Ferret::Search::QueryFilter.new(query_parser.parse(fq))
-        puts f.inspect
-        query = Ferret::Search::FilteredQuery.new(query, f)
+        #f = Ferret::Search::QueryFilter.new(query_parser.parse(fq))
+
+        #query = Ferret::Search::FilteredQuery.new(query, f)
+        query << " +#{fq}"
       end
     end
-    puts query.inspect
+    
     if !parm['facet.query'] or parm['facet.query'].empty?
       parm['facet.query'] = [query]
     end
     opts = {}
     opts[:offset] = (params["start"] || 0).to_i
     opts[:limit] = (params["rows"] || 10).to_i
+    if params["sort"]
+      opts[:sort] = params["sort"]
+      opts[:sort].sub!(/ asc/,"")
+      opts[:sort].sub!(/ desc/,"DESC")
+    end
     results = Document.search(query, opts)
+
     if params["facet"] == "true"
       results.facets = Facet.search(parm)
     end

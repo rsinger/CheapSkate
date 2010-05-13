@@ -1,7 +1,7 @@
 require 'rexml/document'
 require 'yaml'
 class Schema
-  attr_reader :fields, :config, :field_types, :id_field, :copy_fields
+  attr_reader :fields, :config, :field_types, :id_field, :copy_fields, :dynamic_fields
   def self.xml_to_yaml(xml)
     doc = REXML::Document.new xml
     y = {"schema"=>{"types"=>{}, "fields"=>{}}}
@@ -19,6 +19,19 @@ class Schema
       end
       y["schema"]["fields"][field.attributes['name']] = f
     end
+    doc.each_element("/schema/fields/dynamicField") do |dyn_field|
+      f = {}
+      dyn_field.attributes.each do |a,v|
+        next if a == "name"
+        f[a] = case v
+        when "true" then true
+        when "false" then false
+        else v
+        end
+      end
+      y["schema"]["dynamic_fields"] ||= {}
+      y["schema"]["dynamic_fields"][dyn_field.attributes['name']] = f
+    end    
     doc.each_element("/schema/types/fieldType") do |type|
       t = {}
       t[:type] = case type.attributes['class']
@@ -104,6 +117,19 @@ class Schema
       end  
       @fields[field.to_sym][:multi_valued] = fld['multiValued']||false
     end
+    conf['schema']['dynamic_fields'].keys.each do |field|
+      @dynamic_fields ||= {}
+      @dynamic_fields[field.to_sym] = {}
+      fld = conf['schema']['dynamic_fields'][field]
+      @dynamic_fields[field.to_sym][:field_type] = fld['type'].to_sym
+      if fld['indexed'] == false
+        @dynamic_fields[field.to_sym][:index] = :no
+      end
+      if fld['stored'] == false
+        @dynamic_fields[field.to_sym][:store] = :no
+      end  
+      @dynamic_fields[field.to_sym][:multi_valued] = fld['multiValued']||false
+    end    
     conf['schema']['types'].keys.each do |type|
       @field_types[type.to_sym] = conf['schema']['types'][type]
     end
@@ -123,6 +149,8 @@ class Schema
         if doc[field]
           doc[field] = [*doc[field]]
           doc[field] << type_field(field, fld)
+        elsif multi_valued?(field)
+          doc[field] = [type_field(field, fld)]
         else
           doc[field] = type_field(field, fld)
         end
@@ -131,7 +159,29 @@ class Schema
     doc    
   end
   
+  def multi_valued?(field)
+    if @fields[field]
+      return @fields[field][:multi_valued]
+    else
+      dyn_field = nil
+      @dynamic_fields.keys.each do |dyn|
+        if dyn =~ /^\*/
+          r = Regexp.new(dyn.sub(/^\*/,".*"))
+        elsif dyn =~ /\*$/
+          r = Regexp.new(dyn.sub(/\*$/,".*"))
+        end
+        if field =~ dyn
+          dyn_field = dyn
+          break
+        end        
+      end
+      return dyn_field[:multi_valued] if dyn_field        
+    end
+    false
+  end
+  
   def type_field(field_name, value)
+    return value.to_s unless @fields[field_name]
     val = case @field_types[@fields[field_name][:field_type]][:type]
     when :string then value.to_s
     when :text then value.to_s
@@ -166,5 +216,34 @@ class Schema
       opts[:store] = :no
     end
     Ferret::Index::FieldInfo.new(field_name, opts)
+  end
+  
+  def set_dynamic_field(field)
+    return if CheapSkate.index.field_infos[field]
+    return if @fields[field]
+    dyn_field = nil
+    @dynamic_fields.keys.each do |dyn|
+      if dyn =~ /^\*/
+        r = Regexp.new(dyn.sub(/^\*/,".*"))
+      elsif dyn =~ /\*$/
+        r = Regexp.new(dyn.sub(/\*$/,".*"))
+      end
+      if field =~ dyn
+        dyn_field = dyn
+        break
+      end
+    end
+    return unless dyn_field
+    if @dynamic_fields[field][:index] == :no
+      opts[:index] = :no
+      opts[:term_vector] = :no
+    elsif @field_types[@fields[field_name][:field_type]][:index]
+      opts[:index] = @field_types[@dynamic_fields[field][:field_type]][:index]
+    end
+    if @dynamic_fields[field][:stored] == :no
+      opts[:store] = :no
+    end    
+    puts "Adding dynamic field: #{field}"
+    CheapSkate.index.reader.field_infos.add_field(field, opts)
   end
 end
