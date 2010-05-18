@@ -53,12 +53,15 @@ class Document < Ferret::Document
     results = ResultSet.new
     results.offset = opts[:offset]
     results.limit = opts[:limit]
-    results.query = query
+    results.query = query.query.to_s
     if opts[:limit] < 1
       opts[:limit] = 1
     end
+    if query.filter
+      opts[:filter] = query.filter
+    end
 
-    results.total = CheapSkate.index.search_each(query, opts) do |id, score|
+    results.total = CheapSkate.index.search_each(query.query, opts) do |id, score|
       results << CheapSkate.schema.typed_document(CheapSkate.index[id])
     end
     results
@@ -132,10 +135,11 @@ class Facet
     response = FacetResponse.new
     if params['facet.query'] && !params['facet.query'].empty?
       response.query = params['facet.query'].first
+      query = Query.new(params['facet.query'].first)
     else
-      response.query = params['q'].first
+      query = Query.new(params['q'], params['fq'])
     end
-    #response.query = (params["facet.query"]||params["q"]).first
+
     ids = []
     
     # No point in grabbing everything here.
@@ -157,22 +161,30 @@ class Facet
       facet_fields[field.to_sym] = {}
       response.fields << field
     end
-    
-    facet_filter = lambda do |doc,score,searcher|
-      # You must be this high to be a good facet
-      return if score < CONFIG[:facet_score_threshold]
+
+    # Make sure your facet fields are untokenized otherwise you'll get ugly results here
+    unless query.query.is_a?(Ferret::Search::MatchAllQuery) && query.filter.nil?
+      facet_filter = lambda do |doc,score,searcher|
+        # You must be this high to be a good facet
+        return if score < CONFIG[:facet_score_threshold]
+        facet_fields.keys.each do |field|
+          [*searcher[doc][field]].each do |term|  
+            next if term.nil?
+            facet_fields[field][term] ||=0
+            facet_fields[field][term] += 1
+          end
+        end
+      end
+
+      response.total = CheapSkate.index.search_each(query.query, :filter=>query.filter, :limit=>:all, :filter_proc=>facet_filter) do |id, score|
+      end
+    else
       facet_fields.keys.each do |field|
-        [*searcher[doc][field]].each do |term|  
-          next if term.nil?
-          facet_fields[field][term] ||=0
-          facet_fields[field][term] += 1
+        CheapSkate.index.reader.terms(field).each do |term, count|
+          facet_fields[field][term] = count
         end
       end
     end
-
-    response.total = CheapSkate.index.search_each(response.query, :limit=>:all, :filter_proc=>facet_filter) do |id, score|
-    end
-
 
     facet_fields.each do | facet, values |
       response.facets[facet] = values.sort{|a,b| b[1]<=>a[1]}[response.offset, response.limit]
@@ -206,7 +218,6 @@ class InputDocument
   attr_accessor :query_time
   def initialize(doc)
     doc.sub!(/^[^\<]*/,'')
-    puts doc
     @doc = Hpricot::XML(doc)
   end
   
@@ -320,5 +331,37 @@ class CSVLoader
       end  
       CheapSkate.index << doc    
     end
+  end
+end
+
+class Query
+  attr_accessor :parser, :query, :filter
+  def initialize(query, filter_queries=nil)
+    init_parser
+    if query && !query.empty? && query != "*:*"
+      @query = @parser.parse(query)
+    else
+      @query = Ferret::Search::MatchAllQuery.new
+    end
+    if filter_queries
+      bool = Ferret::Search::BooleanQuery.new
+      [*filter_queries].each do |fq|
+        if (filtq = @strict_parser.parse(fq) && !filtq.to_s.empty?)
+          bool << filtq
+        else
+          (idx, term) = fq.split(":")
+          term.sub!(/^\"/,'').sub!(/\"$/,'')
+          bool.add_query(Ferret::Search::TermQuery.new(idx.to_sym, term), :must)
+        end
+      end
+      unless bool.to_s.empty?
+        @filter = Ferret::Search::QueryFilter.new(bool)
+      end
+    end
+  end
+  
+  def init_parser
+    @parser = Ferret::QueryParser.new(:fields=>CheapSkate.index.reader.tokenized_fields)
+    @strict_parser = Ferret::QueryParser.new(:fields=>CheapSkate.index.reader.tokenized_fields, :validate_fields=>true, :handle_parse_errors=>false)
   end
 end

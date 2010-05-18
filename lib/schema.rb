@@ -222,7 +222,9 @@ class Schema
   
   def set_dynamic_field(field)
     return if CheapSkate.index.field_infos[field]
+
     return if @fields[field]
+
     dyn_field = nil
     @dynamic_fields.keys.each do |dyn|
       if dyn =~ /^\*/
@@ -230,22 +232,25 @@ class Schema
       elsif dyn =~ /\*$/
         r = Regexp.new(dyn.sub(/\*$/,".*"))
       end
-      if field =~ dyn
+      unless (field.to_s =~ r).nil?
         dyn_field = dyn
         break
+      else
+        puts "Unable to match #{field.to_s} against a dynamic field pattern"
       end
     end
     return unless dyn_field
-    if @dynamic_fields[field][:index] == :no
+    opts = {}
+    if @dynamic_fields[dyn_field][:index] == :no
       opts[:index] = :no
       opts[:term_vector] = :no
-    elsif @field_types[@fields[field_name][:field_type]][:index]
-      opts[:index] = @field_types[@dynamic_fields[field][:field_type]][:index]
+    elsif @field_types[@dynamic_fields[dyn_field][:field_type]][:index]
+      opts[:index] = @field_types[@dynamic_fields[dyn_field][:field_type]][:index]
     end
-    if @dynamic_fields[field][:stored] == :no
+    if @dynamic_fields[dyn_field][:stored] == :no
       opts[:store] = :no
     end    
     puts "Adding dynamic field: #{field}"
-    CheapSkate.index.reader.field_infos.add_field(field, opts)
+    CheapSkate.index.writer.field_infos.add_field(field, opts)
   end
 end

@@ -104,23 +104,9 @@ helpers do
     end
 
     parm = CGI.parse(qry)
-    query_parser = Ferret::QueryParser.new
-    query_parser.fields = CheapSkate.index.reader.field_names.to_a
-    #query = query_parser.parse(params[:q])
-    query = (params[:q]||"*:*")
-    
-    if parm['fq'] && !parm['fq'].empty?
-      parm['fq'].each do |fq|
-        #f = Ferret::Search::QueryFilter.new(query_parser.parse(fq))
 
-        #query = Ferret::Search::FilteredQuery.new(query, f)
-        query << " +#{fq}"
-      end
-    end
-    
-    if !parm['facet.query'] or parm['facet.query'].empty?
-      parm['facet.query'] = [query]
-    end
+    query = Query.new(parm["q"], parm["fq"])
+
     opts = {}
     opts[:offset] = (params["start"] || 0).to_i
     opts[:limit] = (params["rows"] || 10).to_i
@@ -129,6 +115,7 @@ helpers do
       opts[:sort].sub!(/ asc/,"")
       opts[:sort].sub!(/ desc/,"DESC")
     end
+
     results = Document.search(query, opts)
 
     if params["facet"] == "true"
