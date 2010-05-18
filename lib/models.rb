@@ -164,6 +164,9 @@ class Facet
     puts query.filter.class.name
     # Make sure your facet fields are untokenized otherwise you'll get ugly results here
     unless query.query.is_a?(Ferret::Search::MatchAllQuery) && query.filter.nil?
+      puts "Why are we here?"
+      puts query.query.is_a?(Ferret::Search::MatchAllQuery)
+      puts query.filter.nil?
       facet_filter = lambda do |doc,score,searcher|
         # You must be this high to be a good facet
         return if score < CONFIG[:facet_score_threshold]
