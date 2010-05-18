@@ -102,11 +102,12 @@ helpers do
     if qry.empty?
       qry = request.env["rack.request.query_string"]
     end
-
+    puts qry
     parm = CGI.parse(qry)
 
     query = Query.new(parm["q"].first, parm["fq"])
-
+    puts query.inspect
+    puts query.query.class.name
     opts = {}
     opts[:offset] = (params["start"] || 0).to_i
     opts[:limit] = (params["rows"] || 10).to_i
