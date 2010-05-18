@@ -137,7 +137,7 @@ class Facet
       response.query = params['facet.query'].first
       query = Query.new(params['facet.query'].first)
     else
-      query = Query.new(params['q'], params['fq'])
+      query = Query.new(params['q'].first, params['fq'])
     end
 
     ids = []
