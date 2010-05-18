@@ -161,7 +161,7 @@ class Facet
       facet_fields[field.to_sym] = {}
       response.fields << field
     end
-
+    puts query.filter.class.name
     # Make sure your facet fields are untokenized otherwise you'll get ugly results here
     unless query.query.is_a?(Ferret::Search::MatchAllQuery) && query.filter.nil?
       facet_filter = lambda do |doc,score,searcher|
