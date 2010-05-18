@@ -105,7 +105,7 @@ helpers do
 
     parm = CGI.parse(qry)
 
-    query = Query.new(parm["q"], parm["fq"])
+    query = Query.new(parm["q"].first, parm["fq"])
 
     opts = {}
     opts[:offset] = (params["start"] || 0).to_i
