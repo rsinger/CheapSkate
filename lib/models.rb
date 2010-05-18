@@ -179,6 +179,7 @@ class Facet
       response.total = CheapSkate.index.search_each(query.query, :filter=>query.filter, :limit=>:all, :filter_proc=>facet_filter) do |id, score|
       end
     else
+      puts "Grabbing facets from index.reader.terms"
       facet_fields.keys.each do |field|
         CheapSkate.index.reader.terms(field).each do |term, count|
           facet_fields[field][term] = count
