@@ -4,21 +4,6 @@ class Document < Ferret::Document
     self[CheapSkate.schema.id_field] = doc_id
     super(boost)
   end
-    
-  #def to_document(stringify_keys=false)
-  #  id_field = :id
-  #  id_field = "id" if stringify_keys
-  #  document = {id_field=>@document_id}
-  #  self.each_pair do |key, val|
-  #    next unless key
-  #    if stringify_keys
-  #      document[key.to_s] = val
-  #    else
-  #      document[key.to_sym] = val
-  #    end
-  #  end
-  #  document
-  #end
   
   def delete(clear=true)
     CheapSkate.index.delete(self.document_id)
@@ -67,35 +52,6 @@ class Document < Ferret::Document
     results
   end
   
-  def self.typed_document(untyped_doc, field_types)
-    doc = self.new(untyped_doc[:id])
-    untyped_doc.fields.each do |field|
-      [*untyped_doc[field]].each do |val|
-        value = case field_types[field]
-        when "String" then val
-        when "Fixnum" then val.to_i
-        when "Bignum" then val.to_i          
-        when "Float" then val.to_f
-        when "Time" then Time.parse(val)
-        when "Date" then Date.parse(val)
-        when "DateTime" then DateTime.parse(val)
-        when "TrueClass" then true
-        when "FalseClass" then false
-        when "NilClass" then nil
-        else
-          # Not sure what it is, but we don't support it.
-          val
-        end
-        if doc[field]
-          doc[field] = [*doc[field]]
-          doc[field] << val
-        else
-          doc[field] = val
-        end
-      end
-    end
-    doc
-  end
   
 end  
   
@@ -161,12 +117,10 @@ class Facet
       facet_fields[field.to_sym] = {}
       response.fields << field
     end
-    puts query.filter.class.name
+    
     # Make sure your facet fields are untokenized otherwise you'll get ugly results here
     unless query.query.is_a?(Ferret::Search::MatchAllQuery) && query.filter.nil?
-      puts "Why are we here?"
-      puts query.query.is_a?(Ferret::Search::MatchAllQuery)
-      puts query.filter.nil?
+
       facet_filter = lambda do |doc,score,searcher|
         # You must be this high to be a good facet
         return if score < CONFIG[:facet_score_threshold]
@@ -179,10 +133,10 @@ class Facet
         end
       end
 
-      response.total = CheapSkate.index.search_each(query.query, :filter=>query.filter, :limit=>:all, :filter_proc=>facet_filter) do |id, score|
+      response.total = CheapSkate.index.search_each(query.query, :filter=>query.filter, :limit=>1, :filter_proc=>facet_filter) do |id, score|
       end
     else
-      puts "Grabbing facets from index.reader.terms"
+
       facet_fields.keys.each do |field|
         CheapSkate.index.reader.terms(field).each do |term, count|
           facet_fields[field][term] = count

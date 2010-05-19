@@ -12,9 +12,11 @@ require 'lib/models'
 require 'lib/schema'
 require 'faster_csv'
 
+
 configure do
-  env = Sinatra::Application.environment().to_sym
-  CONFIG = YAML.load_file('conf/cheapskate.yml')[env]
+  environ = Sinatra::Application.environment().to_sym
+
+  CONFIG = YAML.load_file('conf/cheapskate.yml')[environ]
   Index = Struct.new(:index, :schema)
   
   i = Ferret::Index::Index.new(CONFIG[:ferret]||{})
@@ -33,15 +35,18 @@ configure do
   if index_schema_changed && i.reader.num_docs > 0
     raise "Schema has changed, but Index has data!"
   elsif index_schema_changed
-    puts "Creating schema at #{CONFIG[:ferret][:path]}"
+    logger.info "Creating schema at #{CONFIG[:ferret][:path]}"
     infos.create_index(CONFIG[:ferret][:path])
   end
   CheapSkate = Index.new(i,s)
-  puts "CheapSkate starting with index shema: #{yaml["schema"]["name"]}"
-  puts "#{CheapSkate.index.reader.num_docs} documents currently indexed."
-  puts CONFIG.inspect
+  
+  STDOUT.puts "CheapSkate starting with index schema: #{yaml["schema"]["name"]}"
+  STDOUT.puts  "#{CheapSkate.index.reader.num_docs} documents currently indexed."
 end
   
+get '/' do
+  "Welcome to CheapSkate"
+end
 
 
 get '/select/' do
@@ -102,12 +107,11 @@ helpers do
     if qry.empty?
       qry = request.env["rack.request.query_string"]
     end
-    puts qry
+
     parm = CGI.parse(qry)
 
     query = Query.new(parm["q"].first, parm["fq"])
-    puts query.inspect
-    puts query.query.class.name
+
     opts = {}
     opts[:offset] = (params["start"] || 0).to_i
     opts[:limit] = (params["rows"] || 10).to_i

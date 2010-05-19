@@ -1,10 +1,7 @@
-:development:
-    :prefix_path: /dev
-    :ferret:
-        :path: db/dev-skate
-    :facet_score_threshold: 0.2
-:production:
+:default
+    :prefix_path: /solr
     :ferret:
         :path: db/skate
-    :prefix_path: /solr
-    :facet_score_threshold: 0.2    
+    :facet_score_threshold: 0.0
+    :schema: conf/schema.yaml
+  
