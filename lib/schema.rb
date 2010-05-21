@@ -1,7 +1,8 @@
 require 'rexml/document'
 require 'yaml'
-class Schema
-  attr_reader :fields, :config, :field_types, :id_field, :copy_fields, :dynamic_fields
+class CheapSkate::Schema
+  include CheapSkate
+  attr_reader :name, :fields, :config, :field_types, :id_field, :copy_fields, :dynamic_fields, :default_field, :default_operator
   def self.xml_to_yaml(xml)
     doc = REXML::Document.new xml
     y = {"schema"=>{"types"=>{}, "fields"=>{}}}
@@ -92,9 +93,9 @@ class Schema
     y.to_yaml
   end
   
-  def self.new_from_config(yaml)
+  def self.new_from_config(config_hash)
     schema = self.new
-    schema.load_from_conf(YAML.load(yaml))
+    schema.load_from_conf(config_hash)
     schema
   end
   
@@ -105,6 +106,7 @@ class Schema
   def load_from_conf(conf)
     @fields ={}
     @field_types ={}
+    @name = conf['schema']['name']
     conf['schema']['fields'].keys.each do |field|
       @fields[field.to_sym] = {}
       fld = conf['schema']['fields'][field]
@@ -142,6 +144,8 @@ class Schema
       end
     end
     @id_field = (conf['schema']['uniqueKey'] || "id").to_sym
+    @default_field = (conf['schema']['defaultSearchField']||"*").to_sym
+    @default_operator = (conf['schema']['defaultOperator']||"OR").to_sym    
   end
   
   def typed_document(lazy_doc)
@@ -220,37 +224,4 @@ class Schema
     Ferret::Index::FieldInfo.new(field_name, opts)
   end
   
-  def set_dynamic_field(field)
-    return if CheapSkate.index.field_infos[field]
-
-    return if @fields[field]
-
-    dyn_field = nil
-    @dynamic_fields.keys.each do |dyn|
-      if dyn =~ /^\*/
-        r = Regexp.new(dyn.sub(/^\*/,".*"))
-      elsif dyn =~ /\*$/
-        r = Regexp.new(dyn.sub(/\*$/,".*"))
-      end
-      unless (field.to_s =~ r).nil?
-        dyn_field = dyn
-        break
-      else
-        puts "Unable to match #{field.to_s} against a dynamic field pattern"
-      end
-    end
-    return unless dyn_field
-    opts = {}
-    if @dynamic_fields[dyn_field][:index] == :no
-      opts[:index] = :no
-      opts[:term_vector] = :no
-    elsif @field_types[@dynamic_fields[dyn_field][:field_type]][:index]
-      opts[:index] = @field_types[@dynamic_fields[dyn_field][:field_type]][:index]
-    end
-    if @dynamic_fields[dyn_field][:stored] == :no
-      opts[:store] = :no
-    end    
-    puts "Adding dynamic field: #{field}"
-    CheapSkate.index.writer.field_infos.add_field(field, opts)
-  end
 end
