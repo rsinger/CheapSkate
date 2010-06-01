@@ -26,7 +26,7 @@ module CheapSkate
   end  
   
   class ResultSet
-    attr_accessor :total, :docs, :query, :limit, :offset, :facets, :query_time
+    attr_accessor :total, :docs, :query, :limit, :offset, :facets, :query_time, :nl_format
     def <<(obj)
       @docs ||=[]
       @docs << obj
@@ -94,10 +94,38 @@ module CheapSkate
     end
     
     def add_facets_to_results(query)
+
       @facet_fields = query.facet_fields
       @facet_limit = query.facet_limit
       @facet_queries = query.facet_queries
       @facet_offset = query.facet_offset
+    end
+    
+    def format_facets      
+      case self.nl_format
+      when "flat" then flatten_facet_array
+      when "map" then map_facet_array
+      else @facet_fields
+      end      
+    end      
+    
+    def flatten_facet_array
+      flat_arr = {}
+      @facet_fields.each_pair do |k,v|
+        flat_arr[k] = v.flatten
+      end
+      flat_arr
+    end
+    
+    def map_facet_array
+      map_arr = {}
+      @facet_fields.each_pair do |k,v|
+        map_arr[k] ||= {}
+        v.flatten.each_cons(2) do |key, val|
+         map_arr[k][key] = val
+       end
+      end
+      map_arr      
     end
     
     def parse_facet_query(params)     
@@ -131,7 +159,7 @@ module CheapSkate
       p["facet.offset"] = @offset
       p["facet.query"] = @query
       @total = 400;
-      r["facet_counts"] = {"facet_fields"=>@facet_fields, "facet_queries"=>[]}
+      r["facet_counts"] = {"facet_fields"=>format_facets, "facet_queries"=>[]}
       if @facet_queries
         @facet_queries.each do | fq |
           r["facet_counts"]["facet_queries"] << [fq[:query_string], fq[:results]]

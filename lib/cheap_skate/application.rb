@@ -80,6 +80,7 @@ END
         parm = CGI.parse(qry)
         qt = (params['qt'] || "standard")
         query = settings.index.send("parse_#{qt}_query".to_sym, parm)
+        
 
         opts = {}
         opts[:offset] = (params["start"] || 0).to_i
@@ -95,6 +96,7 @@ END
           query.parse_facet_query(parm)        
         end
         results = settings.index.search(query, opts)
+        results.nl_format = params['json.nl']||'flat'
         results
       end
   

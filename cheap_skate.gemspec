@@ -5,27 +5,29 @@
 
 Gem::Specification.new do |s|
   s.name = %q{cheap_skate}
-  s.version = "0.1.3"
+  s.version = "0.0.3"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Ross Singer"]
-  s.date = %q{2010-05-21}
+  s.date = %q{2010-06-01}
   s.description = %q{A Solr-like interface for situations where running a Java application server is not an option (such as shared web hosting).}
   s.email = %q{rossfsinger@gmail.com}
+  s.executables = ["cheapskate", "cheapskate"]
   s.extra_rdoc_files = [
     "LICENSE",
      "README"
   ]
   s.files = [
-    "cheap_skate.rb",
-     "conf/cheapskate.yml-dist",
+    "conf/cheapskate.yml-dist",
      "conf/schema.yml-dist",
      "config.ru-dist",
      "lib/cheap_skate.rb",
      "lib/cheap_skate/application.rb",
+     "lib/cheap_skate/cli.rb",
      "lib/cheap_skate/index.rb",
      "lib/cheap_skate/models.rb",
-     "lib/cheap_skate/schema.rb"
+     "lib/cheap_skate/schema.rb",
+     "lib/cheap_skate/tasks.rb"
   ]
   s.homepage = %q{http://github.com/rsinger/CheapSkate}
   s.rdoc_options = ["--charset=UTF-8"]
