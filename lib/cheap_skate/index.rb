@@ -107,11 +107,11 @@ module CheapSkate
     
 
     def parse_standard_query(params)
-      or_and = case 
-      when params["q.op"] then [*params["q.op"]].first
-      else schema.default_operator
+      if params["q.op"] && !params["q.op"].empty?
+        or_and = [*params["q.op"]].first
+      else 
+        or_and = schema.default_operator
       end
-
       dflt_field = case
       when params["df"] then [*params["df"]].first
       else schema.default_field
@@ -129,16 +129,17 @@ module CheapSkate
       else
         query.query = Ferret::Search::MatchAllQuery.new
       end
-      if params['fq']
+      if params['fq'] && !params['fq'].empty?
         query.filter = parse_filtered_query(params)
       end
       query
     end
     
     def parse_filtered_query(params)
-      or_and = case 
-      when params["q.op"] then [*params["q.op"]].first
-      else schema.default_operator
+      if params["q.op"] && !params["q.op"].empty?
+        or_and = [*params["q.op"]].first
+      else 
+        or_and = schema.default_operator
       end
 
       dflt_field = case
@@ -149,6 +150,7 @@ module CheapSkate
       strict_parser = Ferret::QueryParser.new(:default_field=>dflt_field, :fields=>reader.tokenized_fields, :validate_fields=>true, :or_default=>(or_and=="OR"), :handle_parse_errors=>false)
       bool = Ferret::Search::BooleanQuery.new
       [*params['fq']].each do |fq|
+        next if fq.nil? or fq.empty?
         if (filtq = strict_parser.parse(fq) && !filtq.to_s.empty?)
           bool.add_query(filtq, :must)
         else
@@ -158,6 +160,7 @@ module CheapSkate
         end
       end
       unless bool.to_s.empty?
+        puts "We did something here."
         return Ferret::Search::QueryFilter.new(bool)
       end
       nil
