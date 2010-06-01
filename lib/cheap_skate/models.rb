@@ -263,7 +263,7 @@ end
             next
           end
           if @fields[i] == "id"
-            doc[@index.schema.id_field] = field
+            doc[@index.schema.id_field] = field.strip
           else
             if @field_meta[@fields[i]] && @field_meta[@fields[i]]["split"] == "true"
               field.split(@field_meta[@fields[i]]["separator"]).each do |f|

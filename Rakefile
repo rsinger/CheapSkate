@@ -14,6 +14,7 @@ begin
     gemspec.add_dependency 'json'
     gemspec.add_dependency 'hpricot'
     gemspec.add_dependency 'sinatra'    
+    gemspec.executables << 'cheapskate'
   end
 rescue LoadError
   puts "Jeweler not available. Install it with: gem install jeweler"

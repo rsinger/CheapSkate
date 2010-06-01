@@ -61,8 +61,8 @@ END
     end
 
     before do
-      if env[:prefix_path]
-        request.path_info.sub!(/^#{env[:prefix_path]}/,'')
+      if options.prefix_path
+        request.path_info.sub!(/^#{options.prefix_path}/,'')
       end
       unless request.path_info[-1,1] == "/"
         request.path_info << "/"
@@ -79,7 +79,7 @@ END
 
         parm = CGI.parse(qry)
         qt = (params['qt'] || "standard")
-        query = settings.index.send("parse_#{qt}_query".to_sym, params)
+        query = settings.index.send("parse_#{qt}_query".to_sym, parm)
 
         opts = {}
         opts[:offset] = (params["start"] || 0).to_i

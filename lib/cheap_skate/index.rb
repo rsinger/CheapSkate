@@ -52,7 +52,6 @@ module CheapSkate
       end    
       puts "Adding dynamic field: #{field}"
       writer.field_infos.add_field(field, opts)
-      reader.field_infos.add_field(field, opts)
     end
         
     def search(query, opts={})
@@ -154,7 +153,7 @@ module CheapSkate
           bool.add_query(filtq, :must)
         else
           (idx, term) = fq.split(":")
-          term.sub!(/^\"/,'').sub!(/\"$/,'')
+          term = term.sub(/^\"/,'').sub(/\"$/,'')
           bool.add_query(Ferret::Search::TermQuery.new(idx.to_sym, term), :must)
         end
       end
@@ -170,10 +169,49 @@ module CheapSkate
     end
 
     def parse_morelikethis_query(params)
+      q = case params["q"].class.name
+      when "Array" then params["q"].first
+      when "String" then params["q"]
+      else "*:*"
+      end
+      opts = {}
+      opts[:limit] = 1
+      if params['mlt.match.offset']
+        opts[:offset] = [*params['mlt.match.offset']].first.to_i
+      end
+      mlt = nil
+      self.search_each(q, opts) do |doc, score|
+        mlt = self[doc].load
+      end
+      bool = Ferret::Search::BooleanQuery.new
+        unless params['mlt.match.include'] && [*params['mlt.match.include']].first == "true"
+          b = Ferret::Search::BooleanQuery.new
+          bool.add_query(Ferret::Search::TermQuery.new(:id, mlt[:id]), :must_not)
+        end      
+      mlt.each_pair do |key, val|
 
+        if val.is_a?(Array)
+          val.each do | v |
+            b = Ferret::Search::BooleanQuery.new
+            b.add_query(Ferret::Search::TermQuery.new(key, v))
+            bool << b
+          end
+        else
+          b = Ferret::Search::BooleanQuery.new
+          b.add_query(Ferret::Search::TermQuery.new(key, val))
+          bool << b
+        end
+      end
+      query = CheapSkate::Query.new
+      
+      # No idea why this is necessary, but Ferret will ignore our boolean NOT otherwise
+      p = Ferret::QueryParser.new      
+      query.query = p.parse(bool.to_s)
+
+      return query
     end
     
-    def create_document(id=nil, boost=nil)
+    def create_document(id=UUID.generate, boost=1.0)
       d = CheapSkate::Document.new(id, boost)
       d.index = self
       d

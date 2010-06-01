@@ -1,4 +1,4 @@
-:default
+:default:
     :prefix_path: /solr
     :ferret:
         :path: db/skate
