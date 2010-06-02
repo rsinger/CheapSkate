@@ -26,7 +26,7 @@ module CheapSkate
   end  
   
   class ResultSet
-    attr_accessor :total, :docs, :query, :limit, :offset, :facets, :query_time, :nl_format
+    attr_accessor :total, :docs, :query, :limit, :offset, :facets, :query_time, :nl_format, :max_score
     def <<(obj)
       @docs ||=[]
       @docs << obj
@@ -34,7 +34,8 @@ module CheapSkate
   
     def to_hash()
       response = {"responseHeader"=>{"status"=>0, "QTime"=>self.query_time, "params"=>{"q"=>self.query, "version"=>"2.2", "rows"=>self.limit}}}
-      response["response"] = {"numFound"=>self.total, "start"=>self.offset, "docs"=>[]}
+      response["response"] = {"numFound"=>self.total, "start"=>self.offset, "rows"=>docs.length, "docs"=>[]}
+      response["response"]["maxScore"] = self.max_score if self.max_score
       if self.docs
         self.docs.each do |doc|
           response["response"]["docs"] << doc
@@ -121,8 +122,8 @@ module CheapSkate
       map_arr = {}
       @facet_fields.each_pair do |k,v|
         map_arr[k] ||= {}
-        v.flatten.each_cons(2) do |key, val|
-         map_arr[k][key] = val
+        v.each do |val_pair|
+         map_arr[k][val_pair[0]] = val_pair[1]
        end
       end
       map_arr      

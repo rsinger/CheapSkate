@@ -95,7 +95,7 @@ END
           query.add_facets_to_query(parm)  
           query.parse_facet_query(parm)        
         end
-        results = settings.index.search(query, opts)
+        results = settings.index.do_search(query, opts)
         results.nl_format = params['json.nl']||'flat'
         results
       end

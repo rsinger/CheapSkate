@@ -154,7 +154,11 @@ module CheapSkate
       lazy_doc.fields.each do |field|
         [*lazy_doc[field]].each do |fld|
           if doc[field]
-            doc[field] = [*doc[field]]
+            if multi_valued?(field)
+              doc[field] = [*doc[field]] 
+            else
+              doc[field] << "\n"
+            end
             doc[field] << type_field(field, fld)
           elsif multi_valued?(field)
             doc[field] = [type_field(field, fld)]

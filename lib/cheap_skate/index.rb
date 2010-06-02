@@ -54,7 +54,7 @@ module CheapSkate
       writer.field_infos.add_field(field, opts)
     end
         
-    def search(query, opts={})
+    def do_search(query, opts={})
       results = ResultSet.new
       results.offset = opts[:offset]
       results.limit = opts[:limit]
@@ -73,9 +73,14 @@ module CheapSkate
           opts[:filter_proc] = query.filter_proc
         end
       end
-
-      results.total = self.search_each(query.query, opts) do |id, score|
-        results << @schema.typed_document(self[id])
+      searcher = Ferret::Search::Searcher.new(self.reader)
+      hits = searcher.search(query.query, opts)
+      results.total = hits.total_hits
+      results.max_score = hits.max_score
+      hits.hits.each do |hit|
+       doc = @schema.typed_document(self[hit.doc])
+       doc[:score] = hit.score
+       results << doc      
       end
       if query.respond_to?(:facet_fields)
         facets = {}
@@ -95,7 +100,6 @@ module CheapSkate
     end
     
     def get_facets_from_index_terms(query)
-      puts query.facet_fields.inspect
       query.facet_fields.keys.each do |field|
         field_terms = reader.terms(field)
         next unless field_terms
@@ -160,7 +164,6 @@ module CheapSkate
         end
       end
       unless bool.to_s.empty?
-        puts "We did something here."
         return Ferret::Search::QueryFilter.new(bool)
       end
       nil
