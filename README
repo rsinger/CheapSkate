@@ -10,6 +10,28 @@ Requirements:
     json
     faster_csv
     
+Installation:
+    gem install cheap_skate
+    
+Getting Started:
+    $ cheapskate init my_new_cheapskate_project 
+    
+    Note the 'project name' needs to be something that can be easily turned into a Ruby symbol.  Use underscores instead of dashes, don't start with a number, etc.
+    This (rake task) will create a new directory with subdirectories to store your CheapSkate configuration, Ferret index, logs, etc.
+    
+    If you have an existing application with predefined schema.xml:
+    
+    $ cd my_new_cheapskate_project
+    $ cheapskate convertschema xml=/path/to/schema.xml
+    
+    This will take your existing schema document and migrate it to CheapSkate's YAML-based schema (as ./conf/schema.yml).
+    
+    Modify ./conf/cheapskate.yml to taste.
+    
+    $ rackup config.ru
+    
+    Point a web client at http://localhost:9292/, you should see a "Welcome to CheapSkate" message.
+    
 Caveats:
 
 CheapSkate isn't really intended to replace Solr.  If you need something that scales to millions of documents or performs replication or does all the neat things Solr does, use Solr.
@@ -19,7 +41,5 @@ Faceting causes a serious performance hit on large result sets due to the fact t
 Todos:
 
 Provide field boosting and analyzers both during index as well as query.
-
-Add the MoreLikeThis analyzer from acts_as_ferret.
 
 Add more responseWriters (starting with XML).
