@@ -5,11 +5,11 @@
 
 Gem::Specification.new do |s|
   s.name = %q{cheap_skate}
-  s.version = "0.0.5"
+  s.version = "0.0.6"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Ross Singer"]
-  s.date = %q{2010-06-01}
+  s.date = %q{2010-06-02}
   s.description = %q{A Solr-like interface for situations where running a Java application server is not an option (such as shared web hosting).}
   s.email = %q{rossfsinger@gmail.com}
   s.executables = ["cheapskate", "cheapskate"]

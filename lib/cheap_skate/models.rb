@@ -34,7 +34,7 @@ module CheapSkate
   
     def to_hash()
       response = {"responseHeader"=>{"status"=>0, "QTime"=>self.query_time, "params"=>{"q"=>self.query, "version"=>"2.2", "rows"=>self.limit}}}
-      response["response"] = {"numFound"=>self.total, "start"=>self.offset, "rows"=>docs.length, "docs"=>[]}
+      response["response"] = {"numFound"=>self.total, "start"=>self.offset, "rows"=>(self.docs||[]).length, "docs"=>[]}
       response["response"]["maxScore"] = self.max_score if self.max_score
       if self.docs
         self.docs.each do |doc|
