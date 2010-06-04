@@ -222,5 +222,81 @@ module CheapSkate
       d.index = self
       d
     end
+    
+    def luke(params)
+      response = LukeResponse.new
+      response.num_docs = reader.num_docs
+      response.max_doc = reader.max_doc
+      response.version = reader.version
+      response.optimized = true # Hard code this -- not sure there's any way to get this from Ferret
+      response.current = reader.version == writer.version
+      response.has_deletions = reader.has_deletions?
+      response.directory = options[:path]
+      response.last_modified = Time.now.xmlschema # I don't see this in Ferret, either
+      reader.field_infos.each do | field |
+        schema_field = schema.fields[field.name]
+        if schema_field
+          luke_field = {:type=>schema_field[:type]}
+          multivalued = schema.multi_valued?(field.name)
+        else
+          luke_field = {:type=>"text"}
+          multivalued = true
+        end
+        schema_string = ""
+        schema_string << case field.indexed?
+        when true then "I"
+        else "-"
+        end
+        schema_string << case field.tokenized?
+        when true then "T"
+        else "-"
+        end
+        
+        schema_string << case field.stored?
+        when true then "S"
+        else "-"
+        end
+        
+        schema_string << case multivalued
+        when true then "M"
+        else "-"
+        end
+        
+        schema_string << case field.store_term_vector?
+        when true then "V"
+        else "-"
+        end
+        
+        schema_string << case field.store_offsets?
+        when true then "o"
+        else "-"
+        end        
+        
+        schema_string << case field.store_positions?
+        when true then "p"
+        else "-"
+        end        
+        
+        schema_string << case field.omit_norms?
+        when true then "O"
+        else "-"
+        end  
+        schema_string << "--"
+        
+        schema_string << case field.compressed?
+        when true then "C"
+        else "-"
+        end   
+        
+        schema_string << "--"     
+        response.fields[field.name] = {:schema=>schema_string}
+        #terms = {}
+        #reader.terms(field.name).each do |term, count|
+        #  terms[term] = count
+        #end
+        
+      end
+      response
+    end
   end
 end

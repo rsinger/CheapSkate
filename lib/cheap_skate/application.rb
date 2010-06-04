@@ -59,6 +59,16 @@ END
       <lst name="responseHeader"><int name="status">0</int><int name="QTime">1</int><lst name="params"><str name="echoParams">all</str><str name="echoParams">all</str><str name="q">solrpingquery</str><str name="qt">standard</str></lst></lst><str name="status">OK</str>
       </response>'
     end
+    
+    get '/admin/luke/' do
+      luke = options.index.luke(params)
+      wt = params["wt"] || "json"
+      luke.query_time = qtime
+      if wt == "json"
+        content_type 'application/json', :charset => 'utf-8'
+      end      
+      luke.send("as_#{wt}")      
+    end
 
     before do
       if options.prefix_path

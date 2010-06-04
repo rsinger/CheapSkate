@@ -312,4 +312,28 @@ end
   class Query
     attr_accessor :parser, :query, :filter, :filter_proc  
   end
+  
+  class LukeResponse
+    attr_accessor :status, :query_time, :num_docs, :max_doc, :version, :optimized, :current, :has_deletions, :directory, :last_modified,
+      :fields, :key
+    def initialize
+      @status = 0
+      @key = {"I"=>"Indexed", "T"=>"Tokenized", "S"=>"Stored", "M"=>"Multivalued", "V"=>"TermVector Stored",
+          "o"=>"Store Offset With TermVector", "p"=>"Store Position With TermVector", "O"=>"Omit Norms",
+          "L"=>"Lazy","B"=>"Binary","C"=>"Compressed","f"=>"Sort Missing First","l"=>"Sort Missing Last"}    
+      @fields = {}  
+    end
+    
+    def to_hash
+      hsh = {"responseHeader"=>{"status" => @status, "QTime"=>@query_time}, "index"=>{"numDocs"=>@num_docs, "maxDoc"=>@max_doc, "version"=>@version, "optimized"=>@optimized, "current"=>@current, "hasDeletions"=>@has_deletions, "directory"=>@directory, "lastModified"=>@last_modified}, "fields"=>@fields, "key"=>@key}
+    end
+    
+    def as_ruby
+      return to_hash
+    end
+    
+    def as_json
+      return to_hash.to_json
+    end
+  end
 end
