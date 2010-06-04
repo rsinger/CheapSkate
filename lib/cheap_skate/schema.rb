@@ -138,10 +138,12 @@ module CheapSkate
       conf['schema']['types'].keys.each do |type|
         @field_types[type.to_sym] = conf['schema']['types'][type]
       end
-      conf['schema']['copyFields'].each do |copy|
-        copy.each_pair do | orig, dest|
-          @copy_fields[orig.to_sym] ||= []
-          @copy_fields[orig.to_sym] << dest.to_sym
+      if conf['schema']['copyFields']
+        conf['schema']['copyFields'].each do |copy|
+          copy.each_pair do | orig, dest|
+            @copy_fields[orig.to_sym] ||= []
+            @copy_fields[orig.to_sym] << dest.to_sym
+          end
         end
       end
       @id_field = (conf['schema']['uniqueKey'] || "id").to_sym
